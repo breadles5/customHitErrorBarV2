@@ -1,0 +1,111 @@
+body,
+html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.main {
+    width: 755px;
+    /*this is not arbitrary, it is determined by max ms of OD0 timing window times 5* !DO NOT FUCK WITH THIS!*/
+    height: 150px;
+    /*should be 146px, but this being not divisible by 10 makes me mad */
+}
+
+.sd {
+    text-align: center;
+    font: 2.5rem 'Helvetica', sans-serif, bold;
+    color: #ffffffaa;
+    transition: linear 200ms;
+}
+
+/*arrow*/
+.arrow-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px
+}
+
+.arrow {
+    transition: 200ms linear;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 30px solid #ffffff;
+}
+
+.main>.colors-container,
+.tick-container {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    width: 755px;
+}
+
+/*colors*/
+.colors-container {
+    opacity: .5;
+}
+
+.colors-container>div {
+    transition: linear 200ms;
+    height: 25px;
+    position: absolute;
+}
+
+.miss {
+    flex-grow: 1;
+    width: 100%;
+    background-color: #ff0000;
+    z-index: 1;
+}
+
+.bad {
+    background-color: #8a2ce2;
+    z-index: 2;
+}
+
+.good {
+    background-color: #00bfff;
+    z-index: 3;
+}
+
+.great {
+    background-color: #00ff00;
+    z-index: 4;
+}
+
+.perfect {
+    background-color: #ffff00;
+    z-index: 5;
+}
+
+.marvelous {
+    background-color: #ffffff;
+    z-index: 6;
+}
+
+/*tick*/
+.tick-container>div {
+    position: absolute
+}
+
+.tick {
+    height: 50px;
+    width: 10px;
+    border-radius: 10px;
+    z-index: 0;
+}
+
+.bar {
+    width: 15px;
+    height: 60px;
+    background-color: rgb(0, 85, 255);
+    transition: linear 200ms;
+    border-radius: 7.5px;
+    z-index: 8;
+}
