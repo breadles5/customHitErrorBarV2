@@ -1,6 +1,6 @@
 # customHitErrorBarV2
 A rewrite of my remaster of 2ky's custom hit error bar.   
-Built for [tosu](https://github.com/KotRikD/tosu) only, so don't use this in gosumemory.
+  - Built for [tosu](https://github.com/KotRikD/tosu) only, so don't use this in gosumemory.
 ## themes
 Minimal:   
 <img width="500" alt="image" src="https://github.com/breadles5/customHitErrorBarV2/assets/101068519/6f47dce7-765f-42fe-a22c-cf38c95f0af0">    
@@ -17,7 +17,7 @@ Minimal theme:
    2. minimal feature set other than just a plain and simple hit error bar that works
    3. takes up the least amount of resources and is the fastest by cutting out unnecessary features and functions
 ## Installation
-   1. download .zip of your choice in
+   1. download .zip of your choice in [releases](https://github.com/breadles5/customHitErrorBarV2/releases)
    2. unzip folder to your counters/overlays folder
    3. set url in config.ini for ingame overlay or use a source in obs
       
