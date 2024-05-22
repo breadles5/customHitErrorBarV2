@@ -10,7 +10,7 @@ Default:
 Default theme:
    1. resized to fit QHD screens right out the box (recommended scale of 7 or 8 in config.ini if you are using FHD screen)
    2. more refined look, shows colors for each hit judgement timing window and appropriately resizes them to match current maps's OD
-   3. more memory efficient then 2ky's gosumemory hiterror colorful overlay through the use of more modern CSS features
+   3. more resource efficient then 2ky's gosumemory hiterror colorful overlay through the use of more modern CSS features
       
 Minimal theme:
    1. resized to fit QHD screens right out the box (recommended scale of 7 or 8 in config.ini if you are using FHD screen)
