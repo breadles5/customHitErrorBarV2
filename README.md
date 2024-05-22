@@ -8,12 +8,12 @@ Default:
 <img width="500" alt="image" src="https://github.com/breadles5/customHitErrorBarV2/assets/101068519/b6377d5c-4ffe-4ffa-935b-e9b5aed70b51">  
 ## Features
 Default theme:
-   1. resized to fit QHD screens right out the box (recommended scale of .7 or .8 in config.ini if you are using FHD screen)
+   1. resized to fit QHD screens right out the box (recommended scale of 7 or 8 in config.ini if you are using FHD screen)
    2. more refined look, shows colors for each hit judgement timing window and appropriately resizes them to match current maps's OD
    3. more memory efficient then 2ky's gosumemory hiterror colorful overlay through the use of more modern CSS features
       
 Minimal theme:
-   1. resized to fit QHD screens right out the box (recommended scale of .7 or .8 in config.ini if you are using FHD screen)
+   1. resized to fit QHD screens right out the box (recommended scale of 7 or 8 in config.ini if you are using FHD screen)
    2. minimal feature set other than just a plain and simple hit error bar that works
    3. takes up the least amount of resources and is the fastest by cutting out unnecessary features and functions
 ## Installation
