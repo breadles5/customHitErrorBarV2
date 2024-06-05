@@ -1,3 +1,4 @@
+// made by cyperdark (https://github.com/cyperdark)
 class WebSocketManager {
   constructor(host) {
     if (host) {

@@ -2,7 +2,7 @@ import WebSocketManager from "./socket.js";
 const socket = new WebSocketManager("127.0.0.1:24050");
 
 let state = 0;
-
+let ur = 0;
 const elements = {
     tick: document.querySelectorAll("[id^=t]"),
     arrow: document.querySelector(".arrow"),
@@ -15,20 +15,18 @@ const elements = {
     miss: document.querySelector(".miss"),
     sd: document.querySelector(".sd"),
 };
-
 let timing_300g = 16;
-let timing_300 = 0;
-let timing_200 = 0;
-let timing_100 = 0;
-let timing_50 = 0;
-let timing_0 = 0;
+let timing_300 = 64;
+let timing_200 = 97;
+let timing_100 = 127;
+let timing_50 = 151;
+let timing_0 = 188;
 
-const hits = [];
 const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
 const stdDev = (arr, avg) => {
     return Math.sqrt(arr.map(a => Math.pow((a - avg), 2)).reduce((a, b) => a + b,0) / (arr.length - 1));
 }
-function updateTimingWindows(od) { // no mod timing windows
+function updateTimingWindows(od) {
     timing_300 = 64 - (3 * od);
     timing_200 = 97 - (3 * od);
     timing_100 = 127 - (3 * od);
@@ -36,7 +34,7 @@ function updateTimingWindows(od) { // no mod timing windows
     timing_0 = 188 - (3 * od);
 }
 
-function updateHrTimingwindows(od) { // hard rock timing windows
+function updateHrTimingWindows(od) {
     timing_300g = 11.43;
     timing_300 = (64 - (3 * od)) / 1.4;
     timing_200 = (97 - (3 * od)) / 1.4;
@@ -59,7 +57,7 @@ socket.api_v2((data) => {
             elements.allDivs.style.opacity = 1;
         }
         if (data.play.mods.name.includes("HR")) {
-            updateHrTimingwindows(data.beatmap.stats.od.converted);
+            updateHrTimingWindows(data.beatmap.stats.od.converted);
         } else {
             updateTimingWindows(data.beatmap.stats.od.converted);
         }
@@ -68,6 +66,13 @@ socket.api_v2((data) => {
         elements.great.style.width = `${(timing_200 * 5)}px`;
         elements.good.style.width = `${(timing_100 * 5)}px`;
         elements.bad.style.width = `${(timing_50 * 5)}px`;
+    }
+    // reset arrow and tick positions on map restart
+    if (ur !== data.play.unstableRate){
+        ur = data.play.unstableRate;
+        if (ur === 0)
+            elements.tick.style.transform = "translateX(0px)"
+            elements.arrow.style.transform = "translateX(0px)"
     }
 })
 socket.api_v2_precise((data) => {
