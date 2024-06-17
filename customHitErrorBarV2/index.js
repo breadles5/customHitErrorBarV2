@@ -23,25 +23,10 @@ let timing_50 = 151;
 let timing_0 = 188;
 
 const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-const stdDev = (arr, avg) => {
-    return Math.sqrt(arr.map(a => Math.pow((a - avg), 2)).reduce((a, b) => a + b,0) / (arr.length - 1));
-}
-function updateTimingWindows(od) {
-    timing_300 = 64 - (3 * od);
-    timing_200 = 97 - (3 * od);
-    timing_100 = 127 - (3 * od);
-    timing_50 = 151 - (3 * od);
-    timing_0 = 188 - (3 * od);
-}
+const stdDev = (arr, avg) => {return Math.sqrt(arr.map(a => Math.pow((a - avg), 2)).reduce((a, b) => a + b,0) / (arr.length - 1));}
+const updateTimingWindows = (od) => {timing_300 = 64 - (3 * od);timing_200 = 97 - (3 * od);timing_100 = 127 - (3 * od);timing_50 = 151 - (3 * od);timing_0 = 188 - (3 * od);}
 
-function updateHrTimingWindows(od) {
-    timing_300g = 11.43;
-    timing_300 = (64 - (3 * od)) / 1.4;
-    timing_200 = (97 - (3 * od)) / 1.4;
-    timing_100 = (127 - (3 * od)) / 1.4;
-    timing_50 = (151 - (3 * od)) / 1.4;
-    timing_0 = (188 - (3 * od)) / 1.4;
-}
+const updateHrTimingWindows = (od) => {timing_300g = 11.43;timing_300 = (64 - (3 * od)) / 1.4;timing_200 = (97 - (3 * od)) / 1.4;timing_100 = (127 - (3 * od)) / 1.4;timing_50 = (151 - (3 * od)) / 1.4;timing_0 = (188 - (3 * od)) / 1.4;}
 
 socket.api_v2((data) => {
     if (state !== data.state.number) {
@@ -56,11 +41,7 @@ socket.api_v2((data) => {
         } else {
             elements.allDivs.style.opacity = 1;
         }
-        if (data.play.mods.name.includes("HR")) {
-            updateHrTimingWindows(data.beatmap.stats.od.converted);
-        } else {
-            updateTimingWindows(data.beatmap.stats.od.converted);
-        }
+        data.play.mods.name.includes("HR") ? updateHrTimingWindows(data.beatmap.stats.od.converted) : updateTimingWindows(data.beatmap.stats.od.converted);
         elements.marvelous.style.width = `${(timing_300g * 5)}px`;
         elements.perfect.style.width = `${(timing_300 * 5)}px`;
         elements.great.style.width = `${(timing_200 * 5)}px`;
@@ -70,9 +51,10 @@ socket.api_v2((data) => {
     // reset arrow and tick positions on map restart
     if (ur !== data.play.unstableRate){
         ur = data.play.unstableRate;
-        if (ur === 0)
+        if (ur === 0) {
             elements.tick.style.transform = "translateX(0px)"
             elements.arrow.style.transform = "translateX(0px)"
+        }
     }
 })
 socket.api_v2_precise((data) => {
