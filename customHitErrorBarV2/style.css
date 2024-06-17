@@ -91,7 +91,8 @@ html {
 
 /*tick*/
 .tick-container>div {
-    position: absolute
+    position: absolute;
+    transition: opacity 200ms linear;
 }
 
 .tick {
