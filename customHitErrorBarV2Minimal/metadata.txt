@@ -1,0 +1,6 @@
+Usecase: Ingame Overlay
+Name: customHitErrorBarV2Minimal
+Author: breadles
+CompatibleWith: Tosu
+Resolution:  755 x 150
+authorLinks:  https://github.com/breadles5

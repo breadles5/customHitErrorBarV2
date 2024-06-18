@@ -1,0 +1,61 @@
+body,
+html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.main {
+    width: 755px;
+    /*this is not arbitrary, it is determined by max ms of OD0 timing window times 5* !DO NOT FUCK WITH THIS!*/
+    height: 150px;
+    /*should be 146px, but this being not divisible by 10 makes me mad */
+}
+
+
+/*arrow*/
+.arrow-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px
+}
+
+.arrow {
+    transition: 200ms linear;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 30px solid #ffffff;
+}
+
+.main>.tick-container {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    width: 755px;
+}
+/*tick*/
+.tick-container>div {
+    position: absolute;
+    transition: opacity 200ms linear;
+}
+
+.tick {
+    height: 50px;
+    width: 10px;
+    border-radius: 10px;
+    z-index: 0;
+}
+
+.bar {
+    width: 15px;
+    height: 60px;
+    background-color: rgb(0, 85, 255);
+    transition: linear 200ms;
+    border-radius: 7.5px;
+    z-index: 8;
+}
