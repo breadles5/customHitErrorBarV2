@@ -23,7 +23,7 @@ let timing_50 = 151;
 let timing_0 = 188;
 
 const average = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-const stdDev = (arr, avg) => {return Math.sqrt(arr.map(a => Math.pow((a - avg), 2)).reduce((a, b) => a + b,0) / (arr.length - 1));}
+const stdDev = (arr, avg) => {return Math.sqrt(arr.map(a => (a - avg) ** 2).reduce((a, b) => a + b,0) / (arr.length - 1));}
 const updateTimingWindows = (od) => {timing_300 = 64 - (3 * od);timing_200 = 97 - (3 * od);timing_100 = 127 - (3 * od);timing_50 = 151 - (3 * od);timing_0 = 188 - (3 * od);}
 
 const updateHrTimingWindows = (od) => {timing_300g = 11.43;timing_300 = (64 - (3 * od)) / 1.4;timing_200 = (97 - (3 * od)) / 1.4;timing_100 = (127 - (3 * od)) / 1.4;timing_50 = (151 - (3 * od)) / 1.4;timing_0 = (188 - (3 * od)) / 1.4;}
@@ -34,7 +34,7 @@ socket.api_v2((data) => {
         if (state !== 2) {
             elements.allDivs.style.opacity = 0;
             elements.arrow.style.transform = "translateX(0)";
-            for (var n = 0; n < 25; n++) {
+            for (let n = 0; n < 25; n++) {
                 elements.tick[n].style.transform = "translateX(0)";
                 elements.tick[n].style.opacity = 0;
             }
@@ -70,7 +70,7 @@ socket.api_v2_precise((data) => {
         } else {
             elements.arrow.style.borderTopColor = "#FFF";
         }
-        for (var n = 0; n < 25; n++) {
+        for (let n = 0; n < 25; n++) {
             elements.tick[n].style.transform = `translateX(${hitErrors[n] * 2.5}px)`;
             elements.tick[n].style.opacity = 1;
             if (hitErrors[n] >= -(timing_300g) && hitErrors[n] <= timing_300g) {
