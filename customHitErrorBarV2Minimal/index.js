@@ -49,7 +49,9 @@ socket.api_v2((data) => {
     if (ur !== data.play.unstableRate){
         ur = data.play.unstableRate;
         if (ur === 0) {
-            elements.tick.style.transform = "translateX(0px)"
+            for (let n = 0; n < 25; n++) {
+                elements.tick[n].style.opacity = 0;
+            }
             elements.arrow.style.transform = "translateX(0px)"
         }
     }
