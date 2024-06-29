@@ -20,5 +20,7 @@ Minimal theme:
    1. download .zip of your choice in [releases](https://github.com/breadles5/customHitErrorBarV2/releases)
    2. unzip folder to your counters/overlays folder
    3. set url in config.ini for ingame overlay or use a source in obs
+   4. set overlay width and height to dimensions listed in dashboard for overlay
+   5. reposition and resize using hotkeys listed in [gosu wiki](https://github.com/l3lackShark/gosumemory/wiki/GameOverlay)
       
 you can find the url at http://127.0.0.1:24050/ (tosu dashboard)
