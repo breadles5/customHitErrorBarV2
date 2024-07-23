@@ -1,79 +1,88 @@
-// made by cyperdark (https://github.com/cyperdark)
 class WebSocketManager {
   constructor(host) {
+    this.version = '0.1.2';
+
     if (host) {
       this.host = host;
     }
 
     this.createConnection = this.createConnection.bind(this);
+
+    /**
+     * @type {{ [key: string]: WebSocket }} - asd;
+     */
+    this.sockets = {};
   }
 
-  createConnection(url, callback) {
-    if (callback == null) {
-      console.error(`[ISSUE] ${url}: no callback`);
-      return;
-    };
-
+  createConnection(url, callback, filters) {
     let INTERVAL = '';
+    this.sockets[url] = new WebSocket(`ws://${this.host}${url}?l=${encodeURI(window.COUNTER_PATH)}`);
 
-    const that = this;
-    const socket = new WebSocket(`ws://${url}`);
-
-    socket.onopen = () => {
+    this.sockets[url].onopen = () => {
       console.log(`[OPEN] ${url}: Connected`);
 
       if (INTERVAL) clearInterval(INTERVAL);
+      if (Array.isArray(filters)) {
+        this.sockets[url].send(`applyFilters:${JSON.stringify(filters)}`);
+      }
     };
 
-    socket.onclose = (event) => {
+    this.sockets[url].onclose = (event) => {
       console.log(`[CLOSED] ${url}: ${event.reason}`);
 
+      delete this.sockets[url];
       INTERVAL = setTimeout(() => {
-        that.createConnection(url, callback);
+        this.createConnection(url, callback, filters);
       }, 1000);
     };
 
-    socket.onerror = (event) => {
+    this.sockets[url].onerror = (event) => {
       console.log(`[ERROR] ${url}: ${event.reason}`);
     };
 
-    socket.onmessage = (event) => {
+
+    this.sockets[url].onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.error != null) {
+          console.error(`[MESSAGE_ERROR] ${url}:`, data.error);
+          return;
+        };
+
+        if (data.message != null) {
+          if (data.message.error != null) {
+            console.error(`[MESSAGE_ERROR] ${url}:`, data.message.error);
+            return;
+          }
+        };
 
         callback(data);
       } catch (error) {
-        console.log(`[MESSAGE_ERROR] ${url}: Couldn't parse incomming message`);
+        console.log(`[MESSAGE_ERROR] ${url}: Couldn't parse incomming message`, error);
       };
     };
   };
 
 
   /**
-   * Connects to gosu compatible socket api.
-   * @param {(data: WEBSOCKET_V1) => void} callback - The function to handle received messages.
-   */
-  api_v1(callback) {
-    this.createConnection(`${this.host}/ws`, callback);
-  };
-
-
-  /**
    * Connects to tosu advanced socket api.
    * @param {(data: WEBSOCKET_V2) => void} callback - The function to handle received messages.
+   * @param {Filters[]} filters
    */
-  api_v2(callback) {
-    this.createConnection(`${this.host}/websocket/v2`, callback);
+  api_v2(callback, filters) {
+    this.createConnection("/websocket/v2", callback, filters);
   };
 
 
   /**
    * Connects to keyOverlay socket api.
    * @param {(data: WEBSOCKET_V2_KEYS) => void} callback - The function to handle received messages.
+   * @param {Filters[]} filters
    */
-  api_v2_precise(callback) {
-    this.createConnection(`${this.host}/websocket/v2/precise`, callback);
+  api_v2_precise(callback, filters) {
+    this.createConnection("/websocket/v2/precise", callback, filters);
   };
+
 
   /**
    * Calculate custom pp for a current, or specified map
@@ -82,17 +91,18 @@ class WebSocketManager {
    */
   async calculate_pp(params) {
     try {
-      if (typeof params != 'object') {
+      if (typeof params !== 'object') {
         return {
           error: 'Wrong argument type, should be object with params'
         };
       };
 
 
-      const request = await fetch(`${this.host}/api/calculate/pp`, {
-        method: "GET",
-        body: JSON.stringify(params)
-      });
+      const url = new URL(`http://${this.host}/api/calculate/pp`);
+      Object.keys(params)
+        .forEach(key => url.searchParams.append(key, params[key]));
+
+      const request = await fetch(url, { method: "GET", });
 
 
       const json = await request.json();
@@ -103,8 +113,9 @@ class WebSocketManager {
       return {
         error: error.message,
       };
-    };
+    }
   };
+
 
   /**
    * Get beatmap **.osu** file (local)
@@ -113,7 +124,7 @@ class WebSocketManager {
    */
   async getBeatmapOsuFile(file_path) {
     try {
-      if (typeof file_path != 'object') {
+      if (typeof file_path !== 'object') {
         return {
           error: 'Wrong argument type, should be object with params'
         };
@@ -133,6 +144,61 @@ class WebSocketManager {
       return {
         error: error.message,
       };
+    }
+  };
+
+
+  /**
+   * Connects to message
+   * @param {(data: { command: string, message: any }) => void} callback - The function to handle received messages.
+   */
+  commands(callback) {
+    this.createConnection("/websocket/commands", callback);
+  };
+
+  /**
+   * 
+   * @param {string} name 
+   * @param {string|Object} payload 
+   */
+  sendCommand(name, command, amountOfRetries = 1) {
+    if (!this.sockets['/websocket/commands']) {
+      setTimeout(() => {
+        that.sendCommand(name, command, amountOfRetries + 1);
+      }, 100);
+
+      return;
+    };
+
+
+    try {
+      const payload = typeof command === 'object' ? JSON.stringify(command) : command;
+      this.sockets['/websocket/commands'].send(`${name}:${payload}`);
+    } catch (error) {
+      if (amountOfRetries <= 3) {
+        console.log(`[COMMAND_ERROR] Attempt ${amountOfRetries}`, error);
+        setTimeout(() => {
+          that.sendCommand(name, command, amountOfRetries + 1);
+        }, 1000);
+        return;
+      };
+
+
+      console.error("[COMMAND_ERROR]", error);
+    };
+  };
+
+
+  close(url) {
+    this.host = url;
+
+    const array = Object.keys(this.sockets);
+    for (let i = 0; i < array.length; i++) {
+      const key = array[i];
+      const value = this.sockets[key];
+
+      if (!value) continue;
+      value.close();
     };
   };
 };
@@ -140,6 +206,11 @@ class WebSocketManager {
 
 export default WebSocketManager;
 
+
+
+/** 
+ * @typedef {string | { field: string; keys: Filters[] }} Filters
+ */
 
 
 /** @typedef {object} CALCULATE_PP
@@ -161,261 +232,37 @@ export default WebSocketManager;
 
 
 /** @typedef {object} CALCULATE_PP_RESPONSE
- * @property {object} attributes
- * @property {number} attributes.mode
- * @property {number} attributes.version
- * @property {number} attributes.nCircles
- * @property {number} attributes.nSliders
- * @property {number} attributes.nSpinners
- * @property {number} attributes.ar
- * @property {number} attributes.cs
- * @property {number} attributes.hp
- * @property {number} attributes.od
- * @property {number} attributes.arHitWindow
- * @property {number} attributes.odHitWindow
- * @property {number} attributes.clockRate
- * @property {number} attributes.bpm
- * @property {object} performance
- * @property {number} performance.mode
- * @property {number} performance.pp
- * @property {number} performance.ppAcc
- * @property {number} performance.ppAim
- * @property {number} performance.ppFlashlight
- * @property {number} performance.ppSpeed
- * @property {number} performance.effectiveMissCount
- * @property {object} performance.difficulty
- * @property {number} performance.difficulty.mode
- * @property {number} performance.difficulty.aim
- * @property {number} performance.difficulty.speed
- * @property {number} performance.difficulty.flashlight
- * @property {number} performance.difficulty.sliderFactor
- * @property {number} performance.difficulty.speedNoteCount
- * @property {number} performance.difficulty.ar
- * @property {number} performance.difficulty.od
- * @property {number} performance.difficulty.nCircles
- * @property {number} performance.difficulty.nSliders
- * @property {number} performance.difficulty.nSpinners
- * @property {number} performance.difficulty.stars
- * @property {number} performance.difficulty.maxCombo
+ * @property {object} difficulty
+ * @property {number} difficulty.mode
+ * @property {number} difficulty.stars
+ * @property {boolean} difficulty.isConvert
+ * @property {number} difficulty.aim
+ * @property {number} difficulty.speed
+ * @property {number} difficulty.flashlight
+ * @property {number} difficulty.sliderFactor
+ * @property {number} difficulty.speedNoteCount
+ * @property {number} difficulty.od
+ * @property {number} difficulty.hp
+ * @property {number} difficulty.nCircles
+ * @property {number} difficulty.nSliders
+ * @property {number} difficulty.nSpinners
+ * @property {number} difficulty.ar
+ * @property {number} difficulty.maxCombo
+ * @property {object} state
+ * @property {number} state.maxCombo
+ * @property {number} state.nGeki
+ * @property {number} state.nKatu
+ * @property {number} state.n300
+ * @property {number} state.n100
+ * @property {number} state.n50
+ * @property {number} state.misses
+ * @property {number} pp
+ * @property {number} ppAim
+ * @property {number} ppFlashlight
+ * @property {number} ppSpeed
+ * @property {number} ppAccuracy
+ * @property {number} effectiveMissCount
  */
-
-
-
-/** @typedef {object} WEBSOCKET_V1
- * @property {object} settings
- * @property {boolean} settings.showInterface
- * @property {object} settings.folders
- * @property {string} settings.folders.game
- * @property {string} settings.folders.skin
- * @property {string} settings.folders.songs
- * @property {object} menu
- * @property {object} menu.mainMenu
- * @property {number} menu.mainMenu.bassDensity
- * @property {number} menu.state
- * @property {number} menu.gameMode
- * @property {number} menu.isChatEnabled
- * @property {object} menu.bm
- * @property {object} menu.bm.time
- * @property {number} menu.bm.time.firstObj
- * @property {number} menu.bm.time.current
- * @property {number} menu.bm.time.full
- * @property {number} menu.bm.time.mp3
- * @property {number} menu.bm.id
- * @property {number} menu.bm.set
- * @property {string} menu.bm.md5
- * @property {number} menu.bm.rankedStatus
- * @property {object} menu.bm.metadata
- * @property {string} menu.bm.metadata.artist
- * @property {string} menu.bm.metadata.artistOriginal
- * @property {string} menu.bm.metadata.title
- * @property {string} menu.bm.metadata.titleOriginal
- * @property {string} menu.bm.metadata.mapper
- * @property {string} menu.bm.metadata.difficulty
- * @property {object} menu.bm.stats
- * @property {number} menu.bm.stats.AR
- * @property {number} menu.bm.stats.CS
- * @property {number} menu.bm.stats.OD
- * @property {number} menu.bm.stats.HP
- * @property {number} menu.bm.stats.SR
- * @property {object} menu.bm.stats.BPM
- * @property {number} menu.bm.stats.BPM.common
- * @property {number} menu.bm.stats.BPM.min
- * @property {number} menu.bm.stats.BPM.max
- * @property {number} menu.bm.stats.circles
- * @property {number} menu.bm.stats.sliders
- * @property {number} menu.bm.stats.spinners
- * @property {number} menu.bm.stats.holds
- * @property {number} menu.bm.stats.maxCombo
- * @property {number} menu.bm.stats.fullSR
- * @property {number} menu.bm.stats.memoryAR
- * @property {number} menu.bm.stats.memoryCS
- * @property {number} menu.bm.stats.memoryOD
- * @property {number} menu.bm.stats.memoryHP
- * @property {object} menu.bm.path
- * @property {string} menu.bm.path.full
- * @property {string} menu.bm.path.folder
- * @property {string} menu.bm.path.file
- * @property {string} menu.bm.path.bg
- * @property {string} menu.bm.path.audio
- * @property {object} menu.mods
- * @property {number} menu.mods.num
- * @property {string} menu.mods.str
- * @property {object} menu.pp
- * @property {number} menu.pp.95
- * @property {number} menu.pp.96
- * @property {number} menu.pp.97
- * @property {number} menu.pp.98
- * @property {number} menu.pp.99
- * @property {number} menu.pp.100
- * @property {number[]} menu.pp.strains
- * @property {object} menu.pp.strainsAll
- * @property {object[]} menu.pp.strainsAll.series
- * @property {string} menu.pp.strainsAll.series.name
- * @property {number[]} menu.pp.strainsAll.series.data
- * @property {number[]} menu.pp.strainsAll.xaxis
- * @property {object} gameplay
- * @property {number} gameplay.gameMode
- * @property {string} gameplay.name
- * @property {number} gameplay.score
- * @property {number} gameplay.accuracy
- * @property {object} gameplay.combo
- * @property {number} gameplay.combo.current
- * @property {number} gameplay.combo.max
- * @property {object} gameplay.hp
- * @property {number} gameplay.hp.normal
- * @property {number} gameplay.hp.smooth
- * @property {object} gameplay.hits
- * @property {number} gameplay.hits.0
- * @property {number} gameplay.hits.50
- * @property {number} gameplay.hits.100
- * @property {number} gameplay.hits.300
- * @property {number} gameplay.hits.geki
- * @property {number} gameplay.hits.katu
- * @property {number} gameplay.hits.sliderBreaks
- * @property {object} gameplay.hits.grade
- * @property {string} gameplay.hits.grade.current
- * @property {string} gameplay.hits.grade.maxThisPlay
- * @property {number} gameplay.hits.unstableRate
- * @property {} gameplay.hits.hitErrorArray
- * @property {object} gameplay.pp
- * @property {number} gameplay.pp.current
- * @property {number} gameplay.pp.fc
- * @property {number} gameplay.pp.maxThisPlay
- * @property {object} gameplay.keyOverlay
- * @property {object} gameplay.keyOverlay.k1
- * @property {boolean} gameplay.keyOverlay.k1.isPressed
- * @property {number} gameplay.keyOverlay.k1.count
- * @property {object} gameplay.keyOverlay.k2
- * @property {boolean} gameplay.keyOverlay.k2.isPressed
- * @property {number} gameplay.keyOverlay.k2.count
- * @property {object} gameplay.keyOverlay.m1
- * @property {boolean} gameplay.keyOverlay.m1.isPressed
- * @property {number} gameplay.keyOverlay.m1.count
- * @property {object} gameplay.keyOverlay.m2
- * @property {boolean} gameplay.keyOverlay.m2.isPressed
- * @property {number} gameplay.keyOverlay.m2.count
- * @property {object} gameplay.leaderboard
- * @property {boolean} gameplay.leaderboard.hasLeaderboard
- * @property {boolean} gameplay.leaderboard.isVisible
- * @property {object} gameplay.leaderboard.ourplayer
- * @property {string} gameplay.leaderboard.ourplayer.name
- * @property {number} gameplay.leaderboard.ourplayer.score
- * @property {number} gameplay.leaderboard.ourplayer.combo
- * @property {number} gameplay.leaderboard.ourplayer.maxCombo
- * @property {string} gameplay.leaderboard.ourplayer.mods
- * @property {number} gameplay.leaderboard.ourplayer.h300
- * @property {number} gameplay.leaderboard.ourplayer.h100
- * @property {number} gameplay.leaderboard.ourplayer.h50
- * @property {number} gameplay.leaderboard.ourplayer.h0
- * @property {number} gameplay.leaderboard.ourplayer.team
- * @property {number} gameplay.leaderboard.ourplayer.position
- * @property {number} gameplay.leaderboard.ourplayer.isPassing
- * @property {} gameplay.leaderboard.slots
- * @property {boolean} gameplay._isReplayUiHidden
- * @property {object} resultsScreen
- * @property {number} resultsScreen.0
- * @property {number} resultsScreen.50
- * @property {number} resultsScreen.100
- * @property {number} resultsScreen.300
- * @property {string} resultsScreen.name
- * @property {number} resultsScreen.score
- * @property {number} resultsScreen.maxCombo
- * @property {object} resultsScreen.mods
- * @property {number} resultsScreen.mods.num
- * @property {string} resultsScreen.mods.str
- * @property {number} resultsScreen.geki
- * @property {number} resultsScreen.katu
- * @property {object} userProfile
- * @property {string} userProfile.name
- * @property {number} userProfile.accuracy
- * @property {number} userProfile.rankedScore
- * @property {number} userProfile.id
- * @property {number} userProfile.level
- * @property {number} userProfile.playCount
- * @property {number} userProfile.playMode
- * @property {number} userProfile.rank
- * @property {number} userProfile.countryCode
- * @property {number} userProfile.performancePoints
- * @property {boolean} userProfile.isConnected
- * @property {string} userProfile.backgroundColour
- * @property {object} tourney
- * @property {object} tourney.manager
- * @property {number} tourney.manager.ipcState
- * @property {number} tourney.manager.bestOF
- * @property {object} tourney.manager.teamName
- * @property {string} tourney.manager.teamName.left
- * @property {string} tourney.manager.teamName.right
- * @property {object} tourney.manager.stars
- * @property {number} tourney.manager.stars.left
- * @property {number} tourney.manager.stars.right
- * @property {object} tourney.manager.bools
- * @property {boolean} tourney.manager.bools.scoreVisible
- * @property {boolean} tourney.manager.bools.starsVisible
- * @property {} tourney.manager.chat
- * @property {object} tourney.manager.gameplay
- * @property {object} tourney.manager.gameplay.score
- * @property {number} tourney.manager.gameplay.score.left
- * @property {number} tourney.manager.gameplay.score.right
- * @property {object[]} tourney.ipcClients
- * @property {string} tourney.ipcClients.team
- * @property {object} tourney.ipcClients.spectating
- * @property {string} tourney.ipcClients.spectating.name
- * @property {string} tourney.ipcClients.spectating.country
- * @property {number} tourney.ipcClients.spectating.userID
- * @property {number} tourney.ipcClients.spectating.accuracy
- * @property {number} tourney.ipcClients.spectating.rankedScore
- * @property {number} tourney.ipcClients.spectating.playCount
- * @property {number} tourney.ipcClients.spectating.globalRank
- * @property {number} tourney.ipcClients.spectating.totalPP
- * @property {object} tourney.ipcClients.gameplay
- * @property {number} tourney.ipcClients.gameplay.gameMode
- * @property {string} tourney.ipcClients.gameplay.name
- * @property {number} tourney.ipcClients.gameplay.score
- * @property {number} tourney.ipcClients.gameplay.accuracy
- * @property {object} tourney.ipcClients.gameplay.combo
- * @property {number} tourney.ipcClients.gameplay.combo.current
- * @property {number} tourney.ipcClients.gameplay.combo.max
- * @property {object} tourney.ipcClients.gameplay.hp
- * @property {number} tourney.ipcClients.gameplay.hp.normal
- * @property {number} tourney.ipcClients.gameplay.hp.smooth
- * @property {object} tourney.ipcClients.gameplay.hits
- * @property {number} tourney.ipcClients.gameplay.hits.0
- * @property {number} tourney.ipcClients.gameplay.hits.50
- * @property {number} tourney.ipcClients.gameplay.hits.100
- * @property {number} tourney.ipcClients.gameplay.hits.300
- * @property {number} tourney.ipcClients.gameplay.hits.geki
- * @property {number} tourney.ipcClients.gameplay.hits.katu
- * @property {number} tourney.ipcClients.gameplay.hits.sliderBreaks
- * @property {object} tourney.ipcClients.gameplay.hits.grade
- * @property {string} tourney.ipcClients.gameplay.hits.grade.current
- * @property {string} tourney.ipcClients.gameplay.hits.grade.maxThisPlay
- * @property {number} tourney.ipcClients.gameplay.hits.unstableRate
- * @property {} tourney.ipcClients.gameplay.hits.hitErrorArray
- * @property {object} tourney.ipcClients.gameplay.mods
- * @property {number} tourney.ipcClients.gameplay.mods.num
- * @property {string} tourney.ipcClients.gameplay.mods.str
- */
-
 
 
 /** @typedef {object} WEBSOCKET_V2
@@ -549,6 +396,9 @@ export default WebSocketManager;
  * @property {string} beatmap.titleUnicode
  * @property {string} beatmap.mapper
  * @property {string} beatmap.version
+ * @property {object} beatmap.mode
+ * @property {number} beatmap.mode.number
+ * @property {string} beatmap.mode.name
  * @property {object} beatmap.stats
  * @property {object} beatmap.stats.stars
  * @property {number} beatmap.stats.stars.live
@@ -598,7 +448,7 @@ export default WebSocketManager;
  * @property {number} play.hits.geki
  * @property {number} play.hits.katu
  * @property {number} play.hits.sliderBreaks
- * @property {} play.hitErrorArray
+ * @property {number[]} play.hitErrorArray
  * @property {object} play.combo
  * @property {number} play.combo.current
  * @property {number} play.combo.max
@@ -613,7 +463,28 @@ export default WebSocketManager;
  * @property {number} play.pp.fc
  * @property {number} play.pp.maxAchievedThisPlay
  * @property {number} play.unstableRate
- * @property {} leaderboard
+ * @property {object[]} leaderboard
+ * @property {boolean} leaderboard.isFailed
+ * @property {number} leaderboard.position
+ * @property {number} leaderboard.team
+ * @property {number} leaderboard.team
+ * @property {string} leaderboard.name
+ * @property {number} leaderboard.score
+ * @property {number} leaderboard.accuracy
+ * @property {object} leaderboard.hits
+ * @property {number} leaderboard.hits.0
+ * @property {number} leaderboard.hits.50
+ * @property {number} leaderboard.hits.100
+ * @property {number} leaderboard.hits.300
+ * @property {number} leaderboard.hits.geki
+ * @property {number} leaderboard.hits.katu
+ * @property {object} leaderboard.combo
+ * @property {number} leaderboard.combo.current
+ * @property {number} leaderboard.combo.max
+ * @property {object} leaderboard.mods
+ * @property {number} leaderboard.mods.number
+ * @property {string} leaderboard.mods.name
+ * @property {string} leaderboard.rank
  * @property {object} performance
  * @property {object} performance.accuracy
  * @property {number} performance.accuracy.95
@@ -628,11 +499,12 @@ export default WebSocketManager;
  * @property {number[]} performance.graph.series.data
  * @property {number[]} performance.graph.xaxis
  * @property {object} resultsScreen
+ * @property {string} resultsScreen.playerName
  * @property {object} resultsScreen.mode
  * @property {number} resultsScreen.mode.number
  * @property {string} resultsScreen.mode.name
  * @property {number} resultsScreen.score
- * @property {string} resultsScreen.name
+ * @property {number} resultsScreen.accuracy
  * @property {object} resultsScreen.hits
  * @property {number} resultsScreen.hits.0
  * @property {number} resultsScreen.hits.50
@@ -644,6 +516,10 @@ export default WebSocketManager;
  * @property {number} resultsScreen.mods.number
  * @property {string} resultsScreen.mods.name
  * @property {number} resultsScreen.maxCombo
+ * @property {string} resultsScreen.rank
+ * @property {object} resultsScreen.pp
+ * @property {number} resultsScreen.pp.current
+ * @property {number} resultsScreen.pp.fc
  * @property {string} resultsScreen.createdAt
  * @property {object} folders
  * @property {string} folders.game
@@ -674,11 +550,16 @@ export default WebSocketManager;
  * @property {object} tourney.points
  * @property {number} tourney.points.left
  * @property {number} tourney.points.right
- * @property {} tourney.chat
+ * @property {object[]} tourney.chat
+ * @property {string} tourney.chat.team
+ * @property {string} tourney.chat.name
+ * @property {string} tourney.chat.message
+ * @property {string} tourney.chat.timestamp
  * @property {object} tourney.totalScore
  * @property {number} tourney.totalScore.left
  * @property {number} tourney.totalScore.right
  * @property {object[]} tourney.clients
+ * @property {number} tourney.clients.ipcId
  * @property {string} tourney.clients.team
  * @property {object} tourney.clients.user
  * @property {number} tourney.clients.user.id
@@ -707,7 +588,7 @@ export default WebSocketManager;
  * @property {number} tourney.clients.play.hits.geki
  * @property {number} tourney.clients.play.hits.katu
  * @property {number} tourney.clients.play.hits.sliderBreaks
- * @property {} tourney.clients.play.hitErrorArray
+ * @property {number[]} tourney.clients.play.hitErrorArray
  * @property {object} tourney.clients.play.mods
  * @property {number} tourney.clients.play.mods.number
  * @property {string} tourney.clients.play.mods.name
@@ -741,4 +622,20 @@ export default WebSocketManager;
  * @property {boolean} keys.m2.isPressed
  * @property {number} keys.m2.count
  * @property {number[]} hitErrors
+ * @property {object[]} tourney.
+ * @property {number} tourney.ipcId
+ * @property {number[]} tourney.hitErrors
+ * @property {object} tourney.keys
+ * @property {object} tourney.keys.k1
+ * @property {boolean} tourney.keys.k1.isPressed
+ * @property {number} tourney.keys.k1.count
+ * @property {object} tourney.keys.k2
+ * @property {boolean} tourney.keys.k2.isPressed
+ * @property {number} tourney.keys.k2.count
+ * @property {object} tourney.keys.m1
+ * @property {boolean} tourney.keys.m1.isPressed
+ * @property {number} tourney.keys.m1.count
+ * @property {object} tourney.keys.m2
+ * @property {boolean} tourney.keys.m2.isPressed
+ * @property {number} tourney.keys.m2.count
  */
