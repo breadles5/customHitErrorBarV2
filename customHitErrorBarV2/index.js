@@ -73,7 +73,7 @@ socket.api_v2_precise((data) => {
             elements.arrow.style.borderTopColor = "#FFF";
         }
         for (let n = 0; n < 25; n++) {
-            elements.tick[n].style.transform = `translateX(${hitErrors[n] * 2.5}px)`;
+            elements.tick[n].style.transform = `translateX(${hits[n] * 2.5}px)`;
             elements.tick[n].style.opacity = 1;
             if (hits[n] >= -(timing_300g) && hits[n] <= timing_300g) {
                 elements.tick[n].style.backgroundColor = "#ffffff";
