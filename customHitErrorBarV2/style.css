@@ -46,7 +46,6 @@ html {
     width: 755px;
 }
 
-/*colors*/
 .colors-container {
     opacity: .5;
 }
@@ -89,7 +88,6 @@ html {
     z-index: 6;
 }
 
-/*tick*/
 .tick-container>div {
     position: absolute;
     transition: opacity 200ms linear;
